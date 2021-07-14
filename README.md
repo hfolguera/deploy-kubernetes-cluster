@@ -7,8 +7,9 @@ Follow this steps to deploy a k8s cluster on a local environment.
 ### Requirements
 Before executing the ansible playbook to deploy the cluster, you need to satisfy the following requirements:
 1. Having a machine with ansible installed. I'm using my laptop since I already have ansible installed in it, but you can use any other vm.
-2. Register DNS entries for your cluster nodes or assign an IP address. I'll use DNS name resolution.
-3. You must have 3 VMs or physical machines (or more) where you will deploy the k8s cluster and you must have passwordless access to those machines. You can simply copy your public ssh key to `/root/.ssh/authorized_keys`. In the next section I explain how I have deployed my VMs.
+2. The python's netaddr plugin must be installed in that machine since the playbook use the ipaddr filter. You can install it with `pip3 install netaddr` or remove it from the "Init Kubernetes Cluster" task and replacing it with /24 (or whatever netmask you need).
+3. Register DNS entries for your cluster nodes or assign an IP address. I'll use DNS name resolution.
+4. You must have 3 VMs or physical machines (or more) where you will deploy the k8s cluster and you must have passwordless access to those machines. You can simply copy your public ssh key to `/root/.ssh/authorized_keys`. In the next section I explain how I have deployed my VMs.
 
 ### Considerations
 1. The Ansible playbook has been written to be deployed on machines based on Red Hat distributions.
