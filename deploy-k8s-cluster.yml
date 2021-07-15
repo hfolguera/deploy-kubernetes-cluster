@@ -118,7 +118,7 @@
     failed_when: false
 
   - name: Init Kubernetes cluster
-    shell: kubeadm init --apiserver-advertise-address="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --apiserver-cert-extra-sans="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --node-name {{ inventory_hostname }} --pod-network-cidr={{ (hostvars[inventory_hostname]['ansible_default_ipv4']['network'] + '/' + hostvars[inventory_hostname]['ansible_default_ipv4']['netmask']) | ipaddr('network/prefix') }}
+    shell: kubeadm init --apiserver-advertise-address="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --apiserver-cert-extra-sans="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --node-name {{ inventory_hostname }}
     when: kubelet_status.changed == true and is_master|bool == true # Idempotence: We supose if kubelet service is started, cluster has been already initialized 
     register: kubeadm_init_result
 
@@ -138,6 +138,20 @@
     copy:
       src: admin.conf
       dest: /etc/kubernetes/admin.conf
+
+  - name: Get Installed Network Plugin
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    shell: kubectl get all -n kube-system
+    register: network_plugin
+    when: is_master|bool == true
+    changed_when: "'calico' not in network_plugin.stdout"
+
+  - name: Install Network Provider
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    shell: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml
+    when: is_master|bool == true and network_plugin.changed == true
 
   - name: Get cluster nodes
     environment:
@@ -172,18 +186,4 @@
       name: kubelet
       state: started
       enabled: yes
-
-  - name: Get Installed Network Plugin
-    environment:
-      KUBECONFIG: "/etc/kubernetes/admin.conf"
-    shell: kubectl get all -n kube-system
-    register: network_plugin
-    when: is_master|bool == true
-    changed_when: "'calico' not in network_plugin.stdout"
-
-  - name: Install Network Provider
-    environment:
-      KUBECONFIG: "/etc/kubernetes/admin.conf"
-    shell: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml
-    when: is_master|bool == true and network_plugin.changed == true
 
