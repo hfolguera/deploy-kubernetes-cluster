@@ -1,0 +1,189 @@
+---
+- hosts: cf_k8s_cluster
+  remote_user: root
+  any_errors_fatal: true
+
+  tasks:
+  - name: Disable Swap
+    shell: swapoff -a
+    when: ansible_swaptotal_mb > 0
+
+  - name: Disable Swap on future startups
+    replace:
+     path: /etc/fstab
+     regexp: '^(/dev/mapper/ol.*-swap.*)'
+     replace: '#\1'
+
+  - name: Disable Firewall
+    systemd:
+      name: firewalld
+      state: stopped
+      enabled: no
+
+  - name: Add Utils packages
+    yum:
+      name:
+        - vim
+        - yum-utils
+        - device-mapper-persistent-data
+        - lvm2
+        - bind-utils
+      state: present
+
+  - name: Add Docker YUM repository
+    get_url:
+      url: https://download.docker.com/linux/centos/docker-ce.repo
+      dest: /etc/yum.repos.d/docker-ce.repo
+
+  - name: Add CentOS Extra YUM GPG Key
+    rpm_key:
+      key: https://www.centos.org/keys/RPM-GPG-KEY-CentOS-7
+      state: present
+
+  - name: Add CentOS Extra YUM repository
+    yum_repository:
+      name: CentOS_Extra
+      description: CentOS Extra YUM repository
+      baseurl: http://mirror.centos.org/centos/7/extras/x86_64
+
+  - name: Install Docker Packages
+    yum:
+     name:
+       - container-selinux
+       - fuse-overlayfs
+       - slirp4netns
+       - docker-ce
+       - docker-ce-cli
+       - containerd.io
+     state: present
+
+  - name: Create Docker directory
+    file:
+      path: /etc/docker
+      state: directory
+
+  - name: Copy Docker daemon configuration
+    copy:
+      src: docker_daemon.json
+      dest: /etc/docker/daemon.json
+
+  - name: Start Docker Service
+    systemd:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: Add Google Cloud YUM GPG Key
+    rpm_key:
+      key: https://packages.cloud.google.com/yum/doc/yum-key.gpg
+      state: present
+
+  - name: Add Google Cloud Package GPG Key
+    rpm_key:
+      key: https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+      state: present
+
+  - name: Add Kubernetes YUM repository
+    yum_repository:
+      name: Kubernetes
+      description: Kubernetes YUM repository
+      baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+
+  - name: Install Kubernetes Packages
+    yum:
+      name:
+        - kubelet 
+        - kubeadm 
+        - kubectl
+      state: present
+
+  - name: Configure node IP
+    lineinfile:
+      path: /etc/default/kubelet
+      line: KUBELET_EXTRA_ARGS=--node-ip={{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+      create: yes
+    register: configure_node_ip
+
+  - name: Configure sysctl
+    sysctl:
+      name: net.bridge.bridge-nf-call-iptables
+      value: '1'
+      state: present
+      reload: yes
+
+  - name: Get Kubelet service status
+    shell: "systemctl status kubelet.service"
+    register: kubelet_status
+    changed_when: "'Active: inactive' in kubelet_status.stdout"
+    failed_when: false
+
+  - name: Init Kubernetes cluster
+    shell: kubeadm init --apiserver-advertise-address="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --apiserver-cert-extra-sans="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --node-name {{ inventory_hostname }} --pod-network-cidr={{ (hostvars[inventory_hostname]['ansible_default_ipv4']['network'] + '/' + hostvars[inventory_hostname]['ansible_default_ipv4']['netmask']) | ipaddr('network/prefix') }}
+    when: kubelet_status.changed == true and is_master|bool == true # Idempotence: We supose if kubelet service is started, cluster has been already initialized 
+    register: kubeadm_init_result
+
+  - name: Set KUBECONFIG on .bash_profile
+    lineinfile:
+      path: /root/.bash_profile
+      line: "export KUBECONFIG=/etc/kubernetes/admin.conf"
+
+  - name: Fetch /etc/kubernetes/admin.conf file
+    fetch:
+      dest: admin.conf
+      flat: yes
+      src: /etc/kubernetes/admin.conf
+    when: is_master|bool == true
+
+  - name: Copy /etc/kubernetes/admin.conf file
+    copy:
+      src: admin.conf
+      dest: /etc/kubernetes/admin.conf
+
+  - name: Get cluster nodes
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    shell: "kubectl get nodes"
+    register: cluster_nodes
+    changed_when: inventory_hostname not in cluster_nodes.stdout
+    failed_when: false
+
+  - name: Get Token Hash
+    shell: "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'"
+    register: token_hash
+    when: is_master|bool == true
+
+  - name: Get Token
+    shell: "kubeadm token list -o json"
+    register: token
+    when: is_master|bool == true
+
+  - name: Set token global variables
+    run_once: true
+    set_fact:
+      global_token: "{{ token.stdout | from_json }}"
+      global_token_hash: "{{ token_hash }}"
+
+  - name: Join worker nodes
+    shell: "kubeadm join {{ hostvars[groups['all'][0]]['ansible_default_ipv4']['address'] }}:6443 --token {{ global_token.token }} --discovery-token-ca-cert-hash sha256:{{ global_token_hash.stdout }}"
+    when: is_master|bool == false and cluster_nodes.changed == true
+
+  - name: Enable and start Kubelet service
+    systemd:
+      name: kubelet
+      state: started
+      enabled: yes
+
+  - name: Get Installed Network Plugin
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    shell: kubectl get all -n kube-system
+    register: network_plugin
+    when: is_master|bool == true
+    changed_when: "'calico' not in network_plugin.stdout"
+
+  - name: Install Network Provider
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    shell: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml
+    when: is_master|bool == true and network_plugin.changed == true
+

@@ -1,0 +1,5 @@
+*.bck
+*.old
+*.swp
+.DS_Store
+admin.conf
