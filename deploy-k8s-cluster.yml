@@ -118,7 +118,7 @@
     failed_when: false
 
   - name: Init Kubernetes cluster
-    shell: kubeadm init --apiserver-advertise-address="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --apiserver-cert-extra-sans="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --node-name {{ inventory_hostname }}
+    shell: kubeadm init --apiserver-advertise-address="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --apiserver-cert-extra-sans="{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}" --node-name {{ inventory_hostname }} --service-dns-domain {{ service_dns_domain }}
     when: kubelet_status.changed == true and is_master|bool == true # Idempotence: We supose if kubelet service is started, cluster has been already initialized 
     register: kubeadm_init_result
 

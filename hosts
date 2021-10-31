@@ -3,3 +3,5 @@ cf-k8s-master is_master=True
 cf-k8s-node1  is_master=False
 cf-k8s-node2  is_master=False
 
+[cf_k8s_cluster:vars]
+service_dns_domain=calfolguera.com
