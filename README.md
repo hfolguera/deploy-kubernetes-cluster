@@ -13,7 +13,7 @@ Before executing the ansible playbook to deploy the cluster, you need to satisfy
 
 ### Considerations
 1. The Ansible playbook has been written to be deployed on machines based on Red Hat distributions.
-2. Calico is the network plugin deployed. Please, consider modifying the code is you need a different one.
+2. Calico is the network plugin deployed. Please, consider modifying the code if you need a different one.
 
 ### VM deployment
 3 or more machines must be accessible to deploy the kubernetes environment, so I use my local VMWare ESXi environment to provision the required virtual machines.
