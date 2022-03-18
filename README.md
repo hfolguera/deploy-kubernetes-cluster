@@ -32,6 +32,12 @@ Once the inventory is configured, you need to execute the playbook with the foll
 
 *Important!* Remember this is a idempotent playbook! That means that if you find any issue, you can fix it and execute again the playbook from the beggining.
 
+### Untaint master node
+By default, master node does not schedule pods for security and QoS reasons. This behaviour can be altered with the following command:
+```
+kubectl taint nodes <master_node_name> node-role.kubernetes.io/master-
+```
+
 ## Next steps
 
 ## Feedback and Contributing
