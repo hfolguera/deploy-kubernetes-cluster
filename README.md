@@ -54,6 +54,10 @@ kubectl patch storageclass nfs-client -p '{"metadata": {"annotations":{"storagec
 
 Verify the new storage class has been successfully configured with `kubectl get storageclass`.
 
+### Configure a Load Balancer
+I'll use the Metallb project as my custom Load Balancer.
+Follow the instructions in the following repository: [metallb](https://github.com/hfolguera/metallb)
+
 ### Untaint master node
 By default, master node does not schedule pods for security and QoS reasons. This behaviour can be altered with the following command:
 ```
