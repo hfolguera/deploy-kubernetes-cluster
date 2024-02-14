@@ -13,7 +13,7 @@ Before executing the ansible playbook to deploy the cluster, you need to satisfy
 
 ### Considerations
 1. The Ansible playbook has been written to be deployed on machines based on Red Hat distributions.
-2. Calico is the network plugin deployed. Please, consider modifying the code is you need a different one.
+2. Calico is the network plugin deployed. Please, consider modifying the code if you need a different one.
 
 ### VM deployment
 3 or more machines must be accessible to deploy the kubernetes environment, so I use my local ~~VMWare ESXi~~ Proxmox environment to provision the required virtual machines.
@@ -53,6 +53,12 @@ kubectl patch storageclass nfs-client -p '{"metadata": {"annotations":{"storagec
 ```
 
 Verify the new storage class has been successfully configured with `kubectl get storageclass`.
+
+### Untaint master node
+By default, master node does not schedule pods for security and QoS reasons. This behaviour can be altered with the following command:
+```
+kubectl taint nodes <master_node_name> node-role.kubernetes.io/master-
+```
 
 ## Feedback and Contributing
 If you find any issue on this playbook, please open an issue or a PR and I'll check it. Thanks!
