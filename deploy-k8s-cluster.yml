@@ -28,6 +28,7 @@
         - device-mapper-persistent-data
         - lvm2
         - bind-utils
+        - net-tools
       state: present
 
   - name: Add Docker YUM repository
@@ -126,6 +127,11 @@
     lineinfile:
       path: /root/.bash_profile
       line: "export KUBECONFIG=/etc/kubernetes/admin.conf"
+
+  - name: Set kubectl alias on .bash_profile
+    lineinfile:
+      path: /root/.bash_profile
+      line: "alias k=kubectl"
 
   - name: Fetch /etc/kubernetes/admin.conf file
     fetch:
