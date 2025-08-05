@@ -61,8 +61,7 @@ As a requirement, Helm needs to be installed and configured.
 
 ```
 helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
-helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner --set nfs.server=192.168.1.11 --set nfs.path=/volume2/k8s
-kubectl patch storageclass nfs-client -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner --set nfs.server=192.168.1.11 --set nfs.path=/volume2/k8s --set storageClass.defaultClass=true
 ```
 
 Verify the new storage class has been successfully configured with `kubectl get storageclass`.
