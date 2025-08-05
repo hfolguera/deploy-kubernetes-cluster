@@ -42,6 +42,19 @@ Once the inventory is configured, you need to execute the playbook with the foll
 
 ## Post Deployment tasks
 
+### Install Helm
+Some applications are deployed using Helm. Install Helm with the following commands:
+```
+mkdir helm
+cd helm
+wget https://get.helm.sh/helm-v3.17.4-linux-amd64.tar.gz
+tar -xzvf tar -xzvf helm-v3.17.4-linux-amd64.tar.gz
+echo "export PATH=$PATH:helm/linux-amd64" >> .bash_profile
+```
+You can check the last version of Helm [here](https://github.com/helm/helm/releases)
+
+
+
 ### Configure storage provider
 A default storage class will be defined in order to dynamically create PersistentVolumes. I'll take profit of a Synology to provide a NFS storage class.
 As a requirement, Helm needs to be installed and configured.
@@ -61,7 +74,7 @@ Follow the instructions in the following repository: [metallb](https://github.co
 ### Untaint master node
 By default, master node does not schedule pods for security and QoS reasons. This behaviour can be altered with the following command:
 ```
-kubectl taint nodes <master_node_name> node-role.kubernetes.io/master-
+kubectl taint nodes <master_node_name> node-role.kubernetes.io/control-plane:NoSchedule-
 ```
 
 ## Feedback and Contributing
