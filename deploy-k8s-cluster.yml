@@ -27,6 +27,7 @@
         - yum-utils
         - bind-utils
         - net-tools
+        - nfs-utils
       state: present
 
   - name: Ensure br_netfilter is enabled.
